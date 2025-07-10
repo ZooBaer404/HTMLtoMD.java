@@ -1,0 +1,9 @@
+# Maven
+.mvn/
+target/
+
+# Java
+
+
+# Git
+.git/
