@@ -2,6 +2,9 @@
 .mvn/
 target/
 
+# Editor
+.idea/
+
 # Java
 
 
