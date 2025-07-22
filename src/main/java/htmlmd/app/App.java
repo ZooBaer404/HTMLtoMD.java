@@ -4,8 +4,12 @@ import java.util.logging.Logger;
 import java.util.logging.Level;
 import java.util.Scanner;
 import java.util.List;
+import java.util.ArrayList;
 import org.jsoup.parser.Parser;
 import org.jsoup.nodes.Node;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import java.io.*;
 
 public class App {
@@ -85,12 +89,18 @@ public class App {
             System.out.println("info: output file is automatically set to " + autoOutputFile);
         }
 
+        assert outputFile != null;
+
         try {
             inputFileReader = new FileReader(inputFile);
             outputFileReader = new FileReader(outputFile);
         } catch (FileNotFoundException ex) {
             ex.getMessage();
         }
+
+        System.out.println("input file is: " + inputFile.getName());
+        System.out.println("output file is: " + outputFile.getName());
+
 
         System.out.println("Done!");
         System.out.println("Parsing input file...");
@@ -99,12 +109,71 @@ public class App {
         // HtmlTreeBuilder htmlTreeBuilder = new HtmlTreeBuilder();
         Parser htmlParser = Parser.htmlParser();
 
-        List<Node> nodeList = htmlParser.parseFragmentInput(inputFileReader, null, "");
+        assert inputFileReader != null;
+        Document document = htmlParser.parseInput(inputFileReader, "");
 
-        for (Node node : nodeList) {
-            System.out.println(node.nodeName());
+        Element body = document.body();
+        ArrayList<Element> bodyChildren = body.getAllElements().asList();
+
+        StringBuilder finalOutputMD = new StringBuilder();
+
+        // Handle nested tags like <bold> in <p>
+
+        for (Element node : bodyChildren) {
+            switch (node.nodeName()) {
+            case "h1":
+                finalOutputMD.append("# ");
+                finalOutputMD.append(node.ownText());
+                finalOutputMD.append("\n");
+                break;
+            case "h2":
+                finalOutputMD.append("## ");
+                finalOutputMD.append(node.ownText());
+                finalOutputMD.append("\n");
+                break;
+            case "h3":
+                finalOutputMD.append("### ");
+                finalOutputMD.append(node.ownText());
+                finalOutputMD.append("\n");
+                break;
+            case "h4":
+                finalOutputMD.append("#### ");
+                finalOutputMD.append(node.ownText());
+                finalOutputMD.append("\n");
+                break;
+            case "h5":
+                finalOutputMD.append("##### ");
+                finalOutputMD.append(node.ownText());
+                finalOutputMD.append("\n");
+                break;
+            case "img":
+                if (!node.attribute("src").getValue().equals("")) {
+                    finalOutputMD.append("![" + node.attribute("alt").getValue() + "](" + node.attribute("src").getValue()  + ")");
+                } else {
+                    System.out.println("image data is empty!");
+                }
+                break;
+            case "a":
+                finalOutputMD.append("[" + node.ownText() + "]" + "(" + node.attribute("href").getValue() + ")");
+                break;
+            case "p":
+                finalOutputMD.append(node.ownText());
+                finalOutputMD.append("\n");
+                break;
+            case "bold":
+                finalOutputMD.append("**");
+                finalOutputMD.append(node.ownText());
+                finalOutputMD.append("**");
+                break;
+            case "i":
+                finalOutputMD.append("_");
+                finalOutputMD.append(node.ownText());
+                finalOutputMD.append("_");
+                break;
+            }
+
+            System.out.println(finalOutputMD);
         }
-
 
 
         System.out.println("Done!");
@@ -112,4 +181,15 @@ public class App {
 
         System.out.println("Done!");
     }
+
+    static void parseHTMLNodes(Node node) {
+        System.out.println(node.nodeName());
+        System.out.println(node.nodeValue());
+
+        for (int i = 0; i < node.childNodeSize(); i++) {
+            parseHTMLNodes(node.childNodes().get(i));
+        }
+
+    }
+
 }
