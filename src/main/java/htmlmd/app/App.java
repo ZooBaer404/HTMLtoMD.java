@@ -1,5 +1,6 @@
 package htmlmd.app;
 
+import java.nio.file.Files;
 import java.util.logging.Logger;
 import java.util.logging.Level;
 import java.util.Scanner;
@@ -10,12 +11,13 @@ import org.jsoup.nodes.Node;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.commonmark.*;
 import java.io.*;
 
 public class App {
     // private static final Logger logger = Logger.getLogger(App.class.getName());
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         File inputFile = null;
         File outputFile = null;
         Reader inputFileReader = null;
@@ -87,6 +89,7 @@ public class App {
             String inputFileName = inputFile.getName();
             String autoOutputFile = inputFileName.substring(0, inputFileName.lastIndexOf(".")).concat(((htmlToMd) ? ".md" : ".html"));
             System.out.println("info: output file is automatically set to " + autoOutputFile);
+            outputFile = new File(autoOutputFile);
         }
 
         assert outputFile != null;
@@ -112,84 +115,112 @@ public class App {
         assert inputFileReader != null;
         Document document = htmlParser.parseInput(inputFileReader, "");
 
-        Element body = document.body();
-        ArrayList<Element> bodyChildren = body.getAllElements().asList();
-
         StringBuilder finalOutputMD = new StringBuilder();
+        StringBuilder finalOutputHTML = new StringBuilder();
 
-        // Handle nested tags like <bold> in <p>
 
-        for (Element node : bodyChildren) {
-            switch (node.nodeName()) {
-            case "h1":
-                finalOutputMD.append("# ");
-                finalOutputMD.append(node.ownText());
-                finalOutputMD.append("\n");
-                break;
-            case "h2":
-                finalOutputMD.append("## ");
-                finalOutputMD.append(node.ownText());
-                finalOutputMD.append("\n");
-                break;
-            case "h3":
-                finalOutputMD.append("### ");
-                finalOutputMD.append(node.ownText());
-                finalOutputMD.append("\n");
-                break;
-            case "h4":
-                finalOutputMD.append("#### ");
-                finalOutputMD.append(node.ownText());
-                finalOutputMD.append("\n");
-                break;
-            case "h5":
-                finalOutputMD.append("##### ");
-                finalOutputMD.append(node.ownText());
-                finalOutputMD.append("\n");
-                break;
-            case "img":
-                if (!node.attribute("src").getValue().equals("")) {
-                    finalOutputMD.append("![" + node.attribute("alt").getValue() + "](" + node.attribute("src").getValue()  + ")");
-                } else {
-                    System.out.println("image data is empty!");
+        if (htmlToMd) {
+
+            Element body = document.body();
+            ArrayList<Element> bodyChildren = body.getAllElements().asList();
+
+            // Handle nested tags like <bold> in <p>
+
+            for (Element node : bodyChildren) {
+                System.out.println(node.getAllElements().asList());
+
+                switch (node.nodeName()) {
+                case "h1":
+                    finalOutputMD.append("# ");
+                    finalOutputMD.append(node.ownText());
+                    finalOutputMD.append("\n");
+                    break;
+                case "h2":
+                    finalOutputMD.append("## ");
+                    finalOutputMD.append(node.ownText());
+                    finalOutputMD.append("\n");
+                    break;
+                case "h3":
+                    finalOutputMD.append("### ");
+                    finalOutputMD.append(node.ownText());
+                    finalOutputMD.append("\n");
+                    break;
+                case "h4":
+                    finalOutputMD.append("#### ");
+                    finalOutputMD.append(node.ownText());
+                    finalOutputMD.append("\n");
+                    break;
+                case "h5":
+                    finalOutputMD.append("##### ");
+                    finalOutputMD.append(node.ownText());
+                    finalOutputMD.append("\n");
+                    break;
+                case "img":
+                    if (!node.attribute("src").getValue().equals("")) {
+                        finalOutputMD.append("![" + node.attribute("alt").getValue() + "](" + node.attribute("src").getValue()  + ")");
+                    } else {
+                        System.out.println("image data is empty!");
+                    }
+                    break;
+                case "a":
+                    finalOutputMD.append("[" + node.ownText() + "]" + "(" + node.attribute("href").getValue() + ")");
+                    break;
+                case "p":
+                    finalOutputMD.append(node.ownText());
+                    finalOutputMD.append("\n");
+                    break;
+                    // case "bold":
+                    //     finalOutputMD.append("**");
+                    //     finalOutputMD.append(node.ownText());
+                    //     finalOutputMD.append("**");
+                    //     break;
+                    // case "i":
+                    //     finalOutputMD.append("_");
+                    //     finalOutputMD.append(node.ownText());
+                    //     finalOutputMD.append("_");
+                    //     break;
                 }
-                break;
-            case "a":
-                finalOutputMD.append("[" + node.ownText() + "]" + "(" + node.attribute("href").getValue() + ")");
-                break;
-            case "p":
-                finalOutputMD.append(node.ownText());
-                finalOutputMD.append("\n");
-                break;
-            case "bold":
-                finalOutputMD.append("**");
-                finalOutputMD.append(node.ownText());
-                finalOutputMD.append("**");
-                break;
-            case "i":
-                finalOutputMD.append("_");
-                finalOutputMD.append(node.ownText());
-                finalOutputMD.append("_");
-                break;
+
+                System.out.println(finalOutputMD);
             }
 
-            System.out.println(finalOutputMD);
+        } else {
+            StringBuilder contentBuilder = new StringBuilder();
+            try (BufferedReader br = new BufferedReader(inputFileReader)) {
+                String line;
+                while ((line = br.readLine()) != null) {
+                    contentBuilder.append(line).append(System.lineSeparator());
+                }
+            } catch (IOException e) {
+	            throw new RuntimeException(e);
+            }
+	        String finalInputMD = contentBuilder.toString();
+            finalOutputHTML = new StringBuilder(convertMarkdownToHTML(finalInputMD));
         }
-
 
         System.out.println("Done!");
         System.out.println("Saving output file...");
 
+        if (htmlToMd) {
+            FileWriter fw = new FileWriter(outputFile);
+            BufferedWriter bw = new BufferedWriter(fw);
+            bw.write(String.valueOf(finalOutputMD));
+            bw.close();
+        } else {
+            FileWriter fw = new FileWriter(outputFile);
+            BufferedWriter bw = new BufferedWriter(fw);
+            bw.write(String.valueOf(finalOutputHTML));
+            bw.close();
+        }
+
         System.out.println("Done!");
     }
 
-    static void parseHTMLNodes(Node node) {
-        System.out.println(node.nodeName());
-        System.out.println(node.nodeValue());
-
-        for (int i = 0; i < node.childNodeSize(); i++) {
-            parseHTMLNodes(node.childNodes().get(i));
-        }
-
+    public static String convertMarkdownToHTML(String markdownInput) {
+        org.commonmark.parser.Parser parser = org.commonmark.parser.Parser.builder().build();
+        org.commonmark.node.Node document = parser.parse(markdownInput);
+        org.commonmark.renderer.html.HtmlRenderer htmlRenderer = org.commonmark.renderer.html.HtmlRenderer.builder().build();
+        return htmlRenderer.render(document);
     }
 
 }

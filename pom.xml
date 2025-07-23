@@ -46,6 +46,13 @@
       <artifactId>jsoup</artifactId>
       <version>1.21.1</version>
     </dependency>
+
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark</artifactId>
+      <version>0.25.0</version>
+    </dependency>
+
   </dependencies>
 
   <build>
